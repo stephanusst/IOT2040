@@ -1,31 +1,39 @@
 /*
-  IOT2040-IO-PUSH-BUTTON
-
-  Turns an LED on for one hundred milli second, then off for one hundred milli second, repeatedly.
+  IOT2040-IO-PUSH-BUTTON with WebServer
 
   Most Arduinos have an on-board LED you can control. On the UNO, MEGA and ZERO
-  it is attached to digital pin 13, on MKR1000 on pin 6. LED_BUILTIN is set to
-  the correct LED pin independent of which board is used.
+  it is attached to digital pin 13, on MKR1000 on pin 6. 
+  
+  LED_BUILTIN is set to  the correct LED pin independent of which board is used.
   If you want to know what pin the on-board LED is connected to on your Arduino
-  model, check the Technical Specs of your board at:
+  model, check the Technical Specs of your board at: 
   https://www.arduino.cc/en/Main/Products
 
-  modified 8 May 2014
-  by Scott Fitzgerald
-  modified 2 Sep 2016
-  by Arturo Guadalupi
-  modified 8 Sep 2016
-  by Colby Newman
+  The program is originated from Blink demo. However, we have added a class 
+  to read a push button or a switch. The input can be a combinational logic
+  as well.
 
-  This example code is in the public domain.
+  Current application uses 
+  - a green push button attached to DI0 or pin 12.
+  - a yellow pilot lamp attached to DQ0 or pin 7.
 
-  https://www.arduino.cc/en/Tutorial/BuiltInExamples/Blink
+  The main class is Bins.
+class
+Bins::Bins()
+  void Bins::Input()
+  void Bins::Combinational()
+  void Bins::LowToHighState()
+  void Bins::Switch()
+  void Bins::Output()
+  Functions
+  void webserver()
 */
 
 #include <SPI.h>
 #include <Ethernet.h>
+#include <SD.h>
 
-//Siemens IOT2000 Input Output Module
+//Siemens IOT2000 Input Output Expansion Module
 #define DI0 12
 #define DI1 11
 #define DI2 10
@@ -35,11 +43,11 @@
 #define DQ0 8
 #define DQ1 7
 
-
-///////////BINS/////////////////////////////////////////////////////////
+//////////////////// CLASS BINS/////////////////////////////////////////////////////////
 class Bins {
   public: 
-    byte buttonPin;     //pin number
+    byte buttonGreen;   //pin number
+    byte lampYellow;    //pin number
     byte buttonState;
   public: 
     Bins();
@@ -54,24 +62,33 @@ class Bins {
     int set;
     int previousSet;          // The previous output condition    
 };
+////////////////////CLASS BINS/////////////////////////////////////////////////////////
 
+///////////////////BINS::BINS/////////////////////////////////////////////////////////
 Bins::Bins(){
-  buttonPin= DI0;
+  buttonGreen= DI0;
+  lampYellow= DQ0;
   CurrentState=LOW;
   previousState=LOW;
   set=LOW;
   previousSet=LOW;  
 };
+///////////////////BINS::BINS/////////////////////////////////////////////////////////
 
+///////////////////BINS::INPUT/////////////////////////////////////////////////////////
 void Bins::Input(){
   // read the state of the pushbutton value:
-  buttonState = digitalRead(buttonPin); 
+  buttonState = digitalRead(buttonGreen); 
 };
+///////////////////BINS::INPUT/////////////////////////////////////////////////////////
 
+///////////////////BINS::COMBINATIONAL////////////////////////////////////////////////
 void Bins::Combinational(){
   CurrentState= (buttonState); 
 };
+///////////////////BINS::COMBINATIONAL////////////////////////////////////////////////
 
+///////////////////BINS::LOWTOHIGHSTATE///////////////////////////////////////////////
 // Function: pushbutton
 // Considering the state Low to High only.
 // Input: 
@@ -89,7 +106,9 @@ void Bins::LowToHighState(){
   };
   previousState=CurrentState;
 };
+///////////////////BINS::LOWTOHIGHSTATE/////////////////////////////////////////////////
 
+///////////////////BINS::SWITCH/////////////////////////////////////////////////////////
 //The Switch is on PushButton, don't use this if you use PushButton mode
 void Bins::Switch(){
   CurrentState=buttonState;
@@ -100,55 +119,62 @@ void Bins::Switch(){
    else
       set= HIGH;
 }
+///////////////////BINS::SWITCH /////////////////////////////////////////////////////////
 
+
+///////////////////BINS::OUTPUT /////////////////////////////////////////////////////////
 // output()
 // Input:
 // - outputPin
 // - set
 // - previousSet
 // Considering only when the set changed
+/////////////////////////////////////////////////////////////////////////////////////////
 void Bins::Output(){
   //If Set is changed, then executes a function.
   if ((set==HIGH) & (previousSet==LOW)) { 
-    digitalWrite(DQ0, HIGH); 
+    digitalWrite(lampYellow, HIGH); 
 //    report();
   } else if ((set==LOW) & (previousSet==HIGH)){
-    digitalWrite(DQ0, LOW); 
+    digitalWrite(lampYellow, LOW); 
 //    report();
   }  
   previousSet=set;
 }
-///////// BINS /////////////////////////////////////
-
-
+///////////////////BINS::OUTPUT ////////////////////////////////////////////////////////
 
 
 ///////// MAIN PROGRAM /////////////////////////////////////////////
 //
-////// GLOBAL VARIABLES ///////////////
+////// GLOBAL VARIABLES ////////////////////////////////////////////
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
 
-byte mac[] = { 
-  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(192,168,1,249);
+//X2P1LAN
+//byte mac[] = { 0x8C, 0xF3, 0x19, 0x4E, 0x32, 0x2A };
+//IPAddress ip(192,168,1,100);
+
+//X1P1LAN
+byte mac[] = { 0x8C, 0xF3, 0x19, 0x4E, 0x32, 0x29 };
+IPAddress ip(192,168,1,100);
 
 // Initialize the Ethernet server library
 // with the IP address and port you want to use 
 // (port 80 is default for HTTP):
 EthernetServer server(80);
-
 //IOT2000 Extension Module
 Bins portio;
 int pin;
-/////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
 
-/////////// WEBSERVER /////////////////////////////
+/////////// WEBSERVER ////////////////////////////////////////////
 void webserver() {
+  float y,z;
   // listen for incoming clients
   EthernetClient client = server.available();
   if (client) {
-    Serial.println("new client");
+    Serial.println("New client");
+    
     // an http request ends with a blank line
     boolean currentLineIsBlank = true;
     while (client.connected()) {
@@ -160,7 +186,6 @@ void webserver() {
         // character) and the line is blank, the http request has ended,
         // so you can send a reply
         if (c == '\n' && currentLineIsBlank) {
-          
           // send a standard http response header
           client.println("HTTP/1.1 200 OK");
           client.println("Content-Type: text/html;charset=UTF-8");
@@ -175,21 +200,105 @@ void webserver() {
           client.println("<html>");
           
           // add a meta refresh tag, so the browser pulls again every 5 seconds:
-          client.println("<meta http-equiv=\"refresh\" content=\"5\">");
-          
-          // output the value of each analog input pin //0
-          for (int analogChannel = 0; analogChannel < 1; analogChannel++) {           
+          client.println("<meta http-equiv=\"refresh\" content=\"1\">");
+
+          char description[4][2]; 
+          description[0][0]=' '; description[0][1]='V';
+          description[1][0]='m'; description[1][1]='A';
+          description[2][0]=' '; description[2][1]='V';
+          description[3][0]='m'; description[3][1]='A';
+           
+          //Read and Display the four Analog Channel
+          //Voltage 0
+            int analogChannel=0;
+            int sensorReading = analogRead(analogChannel);
+            client.print("U0 ");
+            client.print(analogChannel);
+            client.print(" is ");
+            client.print(sensorReading);
+            client.println(" ");
+            y=(float) sensorReading;
+            client.print(y);
+            client.print(description[analogChannel][0]);
+            client.print(description[analogChannel][1]);
+            client.println(" ");
+            z=y/100;
+            client.print(z);
+            client.print("volt");
+            client.println("<br />");  
+            
+          //Current 0
+            analogChannel=1;
+            sensorReading = analogRead(analogChannel);
+            client.print("I0 ");
+            client.print(analogChannel);
+            client.print(" is ");
+            client.print(sensorReading);
+            client.println(" ");
+            y=(float) sensorReading;
+            //client.print(y);
+            //client.print(description[analogChannel][0]);
+            //client.print(description[analogChannel][1]);
+            //client.println(" ");
+            z=y/50;
+            client.print(z);
+            client.print("kg/cm2");
+            client.println("<br />");  
+
+          //Voltage 1
+            analogChannel=2;
+            sensorReading = analogRead(analogChannel);
+            client.print("U1 ");
+            client.print(analogChannel);
+            client.print(" is ");
+            client.print(sensorReading);
+            client.println(" ");
+            y=(float) sensorReading;
+            client.print(y);
+            client.print(description[analogChannel][0]);
+            client.print(description[analogChannel][1]);
+            client.println(" ");
+            z=y/100;
+            client.print(z);
+            client.print("volt");
+            client.println("<br />"); 
+                        
+            analogChannel=3;
+            sensorReading = analogRead(analogChannel);
+            client.print("I1 ");
+            client.print(analogChannel);
+            client.print(" is ");
+            client.print(sensorReading);
+            client.println(" ");
+            y=(float) sensorReading;
+            client.print(y);
+            client.print(description[analogChannel][0]);
+            client.print(description[analogChannel][1]);
+            client.println(" ");
+            z=y/50;
+            client.print(z);
+            client.print("kg/cm2");
+            client.println("<br />");  
+          //}
+/*
+        for (int analogChannel = 1; analogChannel < 4; analogChannel+1) {           
             int sensorReading = analogRead(analogChannel);
             client.print("Analog input ");
             client.print(analogChannel);
             client.print(" is ");
-            client.print(sensorReading);
-            client.println("<br />");  
-
-            client.print("Digital Output");
-            client.print(portio.set);
+            client.print(sensorReading*16/20+240);
+            client.print(description[analogChannel][0]);
+            client.print(description[analogChannel][1]);
             client.println("<br />");  
           }
+   */ 
+          client.print("DQ0 (YELLOW LAMP): ");
+          if (portio.set==HIGH)
+            client.print("HIGH");
+          else
+            client.print("LOW");            
+          client.println("<br />");  
+                   
           client.println("</html>");
           break;
         }
@@ -215,18 +324,21 @@ void webserver() {
 
 // the setup function runs once when you press reset or power the board
 void setup() {
+   // initialize serial communication at 9600 bits per second:
+  Serial.begin(9600);  
+  Serial.print("server is at ");
+  Serial.println(Ethernet.localIP());
+  
   // initialize digital pin LED_BUILTIN as an output.
   pin=LED_BUILTIN;
   //Initialize IOT2000 Extension Module
   pinMode(pin, OUTPUT);
-  pinMode(portio.buttonPin, INPUT);
   pinMode(DQ0, OUTPUT); 
-
+  pinMode(portio.buttonGreen, INPUT);
+ 
   // Start the Ethernet connection and the server:
   Ethernet.begin(mac, ip);
   server.begin();
-  //Serial.print("server is at ");
-  //Serial.println(Ethernet.localIP());
 }  
 
 // the loop function runs over and over again forever

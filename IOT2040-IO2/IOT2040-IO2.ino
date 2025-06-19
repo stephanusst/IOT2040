@@ -52,7 +52,6 @@ void setup() {
   pinMode(6, OUTPUT);  
   pinMode(7, OUTPUT);  
   pinMode(8, OUTPUT);  
-
 }
 
 // the loop function runs over and over again forever
@@ -66,13 +65,11 @@ void loop() {
   digitalWrite(3, HIGH);   // turn the LED on (HIGH is the voltage level)
   digitalWrite(5, HIGH);   // turn the LED on (HIGH is the voltage level)
   digitalWrite(6, HIGH);   // turn the LED on (HIGH is the voltage level)
-  digitalWrite(7, HIGH);   // turn the LED on (HIGH is the voltage level)
-  digitalWrite(8, HIGH);   // turn the LED on (HIGH is the voltage level)
 
   delay(1000);                       // wait for a second
 
-  digitalWrite(DQ0, HIGH);    // turn the LED off by making the voltage LOW
-  digitalWrite(DQ1, HIGH);    // turn the LED off by making the voltage LOW
+  digitalWrite(DQ0, LOW);    // turn the LED off by making the voltage LOW
+  digitalWrite(DQ1, LOW);    // turn the LED off by making the voltage LOW
   digitalWrite(LED_BUILTIN, LOW);   // turn the LED on (HIGH is the voltage level)
 
   delay(1000);                       // wait for a second

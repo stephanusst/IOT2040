@@ -6,3 +6,4 @@ Yocto Linux, Python programming for IOT2040.
 - mqtt
 
 To run web server, we can use python3 -m, http.server and open the browser, http://192.168.1.100:8000/
+Please run at the root directory.
